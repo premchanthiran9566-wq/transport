@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ bot_name }} 🚌</title>
+<style>
+    :root {
+        --primary: #0f766e;
+        --primary-dark: #0c5c56;
+        --bg: #eef7f6;
+        --bubble-user: #0f766e;
+        --bubble-bot: #ffffff;
+        --text-dark: #222;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background: var(--bg);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .chat-container {
+        width: 100%;
+        max-width: 480px;
+        height: 90vh;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .chat-header {
+        background: var(--primary);
+        color: #fff;
+        padding: 16px 20px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .chat-messages {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: var(--bg);
+    }
+
+    .message {
+        max-width: 80%;
+        padding: 10px 14px;
+        border-radius: 14px;
+        line-height: 1.4;
+        font-size: 0.95rem;
+        white-space: pre-wrap;
+    }
+
+    .message.user {
+        align-self: flex-end;
+        background: var(--bubble-user);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message.bot {
+        align-self: flex-start;
+        background: var(--bubble-bot);
+        color: var(--text-dark);
+        border: 1px solid #e2e8f0;
+        border-bottom-left-radius: 4px;
+    }
+
+    .message.typing {
+        font-style: italic;
+        color: #718096;
+    }
+
+    .chat-input {
+        display: flex;
+        border-top: 1px solid #e2e8f0;
+        padding: 10px;
+        gap: 8px;
+        background: #fff;
+    }
+
+    .chat-input input {
+        flex: 1;
+        padding: 10px 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 20px;
+        outline: none;
+        font-size: 0.95rem;
+    }
+
+    .chat-input input:focus {
+        border-color: var(--primary);
+    }
+
+    .chat-input button {
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 20px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .chat-input button:hover {
+        background: var(--primary-dark);
+    }
+
+    .chat-input button:disabled {
+        background: #a0aec0;
+        cursor: not-allowed;
+    }
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">🚌 {{ bot_name }}</div>
+
+    <div class="chat-messages" id="chatMessages">
+        <div class="message bot">
+            Hi! I'm {{ bot_name }}. Ask me about public transport, vehicles, logistics, or transport infrastructure!
+        </div>
+    </div>
+
+    <form class="chat-input" id="chatForm">
+        <input
+            type="text"
+            id="userInput"
+            placeholder="Ask about transport..."
+            autocomplete="off"
+            required
+        >
+        <button type="submit" id="sendBtn">Send</button>
+    </form>
+</div>
+
+<script>
+    const chatForm = document.getElementById('chatForm');
+    const userInput = document.getElementById('userInput');
+    const chatMessages = document.getElementById('chatMessages');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function addMessage(text, sender) {
+        const msg = document.createElement('div');
+        msg.classList.add('message', sender);
+        msg.textContent = text;
+        chatMessages.appendChild(msg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return msg;
+    }
+
+    chatForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        addMessage(text, 'user');
+        userInput.value = '';
+        sendBtn.disabled = true;
+
+        const typingMsg = addMessage('TransitPal is thinking...', 'bot typing');
+
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+
+            const data = await response.json();
+            typingMsg.remove();
+
+            if (response.ok) {
+                addMessage(data.reply, 'bot');
+            } else {
+                addMessage(data.error || 'Something went wrong. Please try again.', 'bot');
+            }
+        } catch (err) {
+            typingMsg.remove();
+            addMessage('Network error. Please check your connection and try again.', 'bot');
+        } finally {
+            sendBtn.disabled = false;
+            userInput.focus();
+        }
+    });
+</script>
+
+</body>
+</html>
